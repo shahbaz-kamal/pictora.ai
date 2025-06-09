@@ -1,7 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { GoogleGenAI } = require("@google/genai");
+const { GoogleGenAI, Type } = require("@google/genai");
+const { default: axios } = require("axios");
 const app = express();
 const port = 5000;
 require("dotenv").config();
@@ -93,6 +94,66 @@ app.get("/make-decision", async (req, res) => {
     message: prompt,
   });
   res.send({ message: result.text });
+});
+
+// generating json
+
+app.get("/generate-json", async (req, res) => {
+  const prompt = req.query?.prompt;
+  if (!prompt) {
+    res.send({ message: "please provide a prompt" });
+    return;
+  }
+  const response = await ai.models.generateContent({
+    model: "gemini-2.0-flash",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            recipeName: {
+              type: Type.STRING,
+            },
+            ingredients: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.STRING,
+              },
+            },
+          },
+          propertyOrdering: ["recipeName", "ingredients"],
+        },
+      },
+    },
+  });
+  const jsonData = JSON.parse(response.text);
+  res.send(jsonData);
+});
+// generating image detail
+
+app.get("/generate-detail", async (req, res) => {
+  const prompt = req.query?.prompt;
+  if (!prompt) {
+    res.send({ message: "please provide a prompt" });
+    return;
+  }
+  const response = await axios.get(prompt, { responseType: "arraybuffer" });
+  const responseData = {
+    inlineData: {
+      data: Buffer.from(response.data).toString("base64"),
+      mimeType: "image/png",
+    },
+  };
+  const result = await ai.models.generateContent({
+    model: "gemini-2.0-flash",
+    contents: ["Describe the image in detail, directly and without using any headings or labels.", responseData],
+  });
+
+  //   console.log(response);
+  res.send(result.text);
 });
 
 app.get("/", (req, res) => {
