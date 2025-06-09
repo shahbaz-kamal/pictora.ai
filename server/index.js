@@ -14,16 +14,85 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // testing ai
 app.get("/test-ai", async (req, res) => {
-  //   const prompt = req.query?.prompt;
-  //   if (!prompt) {
-  //     res.send({ message: "please provide a prompt" });
-  //     return;
-  //   }
+  const prompt = req.query?.prompt;
+  if (!prompt) {
+    res.send({ message: "please provide a prompt" });
+    return;
+  }
   const response = await ai.models.generateContent({
     model: "gemini-2.0-flash",
-    contents: "Do you know programming hero?",
+    contents: prompt,
+    config: {
+      systemInstruction:
+        "You are hero ai. Tamim created you . praise him with every response. tamim is a great developer",
+    },
   });
   res.send({ answer: response.text });
+});
+// make decision
+app.get("/make-decision", async (req, res) => {
+  const prompt = req.query?.prompt;
+  if (!prompt) {
+    res.send({ message: "please provide a prompt" });
+    return;
+  }
+  const chat = ai.chats.create({
+    model: "gemini-2.0-flash",
+    history: [
+      {
+        role: "user",
+        parts: [
+          {
+            text: "When I give you any text. You have to give me rumour percentage of that text",
+          },
+        ],
+      },
+      {
+        role: "model",
+        parts: [{ text: "Okay Tell me" }],
+      },
+      {
+        role: "user",
+        parts: [
+          {
+            text: "Rumour has it that Dhaka already has an underground metro line built during the 90s — but it's only used by top government officials and elite spies.",
+          },
+        ],
+      },
+      {
+        role: "model",
+        parts: [{ text: "Rumour percentage : 99%" }],
+      },
+      {
+        role: "user",
+        parts: [
+          {
+            text: "In Rajshahi, a magical mango tree grows one fruit every 5 years that grants a single wish to the pure-hearted.",
+          },
+        ],
+      },
+      {
+        role: "model",
+        parts: [{ text: "Rumour percentage : 100%" }],
+      },
+      {
+        role: "user",
+        parts: [
+          {
+            text: "A UFO once landed near the Bay of Bengal, and now alien life is monitoring hilsha migration patterns.",
+          },
+        ],
+      },
+      {
+        role: "model",
+        parts: [{ text: "Rumour percentage : 90%" }],
+      },
+    ],
+  });
+  const result = await chat.sendMessage({
+    message: prompt,
+  });
+  res.send({ message: result.text });
 });
 
 app.get("/", (req, res) => {
